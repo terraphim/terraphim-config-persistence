@@ -41,10 +41,10 @@ fn expand_tilde(path: &str) -> String {
         if let Ok(home) = env::var("HOME") {
             return format!("{}{}", home, &path[1..]);
         }
-    } else if path == "~" {
-        if let Ok(home) = env::var("HOME") {
-            return home;
-        }
+    } else if path == "~"
+        && let Ok(home) = env::var("HOME")
+    {
+        return home;
     }
     path.to_string()
 }

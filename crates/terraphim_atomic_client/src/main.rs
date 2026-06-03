@@ -451,24 +451,23 @@ fn collect_links(
         }
     } else if let Some(obj) = value.as_object() {
         // If object has an @id field, treat it as a link.
-        if let Some(id_val) = obj.get("@id") {
-            if let Some(id_str) = id_val.as_str() {
-                if id_str.starts_with(server_prefix) {
-                    println!("Found object link: {}", id_str);
-                    queue.push_back(id_str.to_string());
-                }
-            }
+        if let Some(id_val) = obj.get("@id")
+            && let Some(id_str) = id_val.as_str()
+            && id_str.starts_with(server_prefix)
+        {
+            println!("Found object link: {}", id_str);
+            queue.push_back(id_str.to_string());
         }
 
         // Also iterate over object values recursively (handles TranslationBoxes etc.)
         for (_k, v) in obj {
             collect_links(queue, v, server_prefix);
         }
-    } else if let Some(str_val) = value.as_str() {
-        if str_val.starts_with(server_prefix) {
-            println!("Found string link: {}", str_val);
-            queue.push_back(str_val.to_string());
-        }
+    } else if let Some(str_val) = value.as_str()
+        && str_val.starts_with(server_prefix)
+    {
+        println!("Found string link: {}", str_val);
+        queue.push_back(str_val.to_string());
     }
 }
 
@@ -555,30 +554,29 @@ async fn export_ontology(args: &[String]) -> Result<(), Box<dyn std::error::Erro
             serde_json::Value::Object(obj) => {
                 let mut new_obj = serde_json::Map::new();
                 for (k, v) in obj {
-                    if k == "@id" {
-                        if let Some(id_str) = v.as_str() {
-                            if id_str.starts_with("http://") || id_str.starts_with("https://") {
-                                // Check if this is a reference to the root resource
-                                if id_str == root_subject {
-                                    // Skip root resource references
-                                    continue;
-                                } else {
-                                    // Keep other full URLs as-is for @id properties
-                                    new_obj.insert(
-                                        k.clone(),
-                                        serde_json::Value::String(id_str.to_string()),
-                                    );
-                                    continue;
-                                }
-                            } else if let Some(mapped) = mapping.get(id_str) {
-                                // If it's in the mapping, use the mapped value
-                                new_obj
-                                    .insert(k.clone(), serde_json::Value::String(mapped.clone()));
+                    if k == "@id"
+                        && let Some(id_str) = v.as_str()
+                    {
+                        if id_str.starts_with("http://") || id_str.starts_with("https://") {
+                            // Check if this is a reference to the root resource
+                            if id_str == root_subject {
+                                // Skip root resource references
                                 continue;
                             } else {
-                                // If @id is not a full URL and not in mapping, skip it
+                                // Keep other full URLs as-is for @id properties
+                                new_obj.insert(
+                                    k.clone(),
+                                    serde_json::Value::String(id_str.to_string()),
+                                );
                                 continue;
                             }
+                        } else if let Some(mapped) = mapping.get(id_str) {
+                            // If it's in the mapping, use the mapped value
+                            new_obj.insert(k.clone(), serde_json::Value::String(mapped.clone()));
+                            continue;
+                        } else {
+                            // If @id is not a full URL and not in mapping, skip it
+                            continue;
                         }
                     }
                     new_obj.insert(k.clone(), map_value(v, mapping, root_subject));
@@ -598,28 +596,26 @@ async fn export_ontology(args: &[String]) -> Result<(), Box<dyn std::error::Erro
                     .filter_map(|v| {
                         if let serde_json::Value::Object(obj) = v {
                             // Check if object has an @id that's not a valid URL
-                            if let Some(id_val) = obj.get("@id") {
-                                if let Some(id_str) = id_val.as_str() {
-                                    if !id_str.starts_with("http://")
-                                        && !id_str.starts_with("https://")
-                                    {
-                                        // Skip this object entirely
-                                        return None;
-                                    }
-                                    // Also filter out any objects with @id properties that are inside collection members
-                                    // These are metadata objects or existing resources that shouldn't be imported
-                                    if obj.contains_key(
-                                        "https://atomicdata.dev/properties/collection/currentPage",
-                                    ) || obj.contains_key(
-                                        "https://atomicdata.dev/properties/collection/pageSize",
-                                    ) || obj
-                                        .contains_key("https://atomicdata.dev/properties/createdAt")
-                                        || obj.contains_key(
-                                            "https://atomicdata.dev/properties/publicKey",
-                                        )
-                                    {
-                                        return None;
-                                    }
+                            if let Some(id_val) = obj.get("@id")
+                                && let Some(id_str) = id_val.as_str()
+                            {
+                                if !id_str.starts_with("http://") && !id_str.starts_with("https://")
+                                {
+                                    // Skip this object entirely
+                                    return None;
+                                }
+                                // Also filter out any objects with @id properties that are inside collection members
+                                // These are metadata objects or existing resources that shouldn't be imported
+                                if obj.contains_key(
+                                    "https://atomicdata.dev/properties/collection/currentPage",
+                                ) || obj.contains_key(
+                                    "https://atomicdata.dev/properties/collection/pageSize",
+                                ) || obj
+                                    .contains_key("https://atomicdata.dev/properties/createdAt")
+                                    || obj
+                                        .contains_key("https://atomicdata.dev/properties/publicKey")
+                                {
+                                    return None;
                                 }
                             }
                         }
@@ -944,30 +940,29 @@ async fn export_to_local(args: &[String]) -> Result<(), Box<dyn std::error::Erro
             serde_json::Value::Object(obj) => {
                 let mut new_obj = serde_json::Map::new();
                 for (k, v) in obj {
-                    if k == "@id" {
-                        if let Some(id_str) = v.as_str() {
-                            if id_str.starts_with("http://") || id_str.starts_with("https://") {
-                                // Check if this is a reference to the root resource
-                                if id_str == root_subject {
-                                    // Skip root resource references
-                                    continue;
-                                } else {
-                                    // Keep other full URLs as-is for @id properties
-                                    new_obj.insert(
-                                        k.clone(),
-                                        serde_json::Value::String(id_str.to_string()),
-                                    );
-                                    continue;
-                                }
-                            } else if let Some(mapped) = mapping.get(id_str) {
-                                // If it's in the mapping, use the mapped value
-                                new_obj
-                                    .insert(k.clone(), serde_json::Value::String(mapped.clone()));
+                    if k == "@id"
+                        && let Some(id_str) = v.as_str()
+                    {
+                        if id_str.starts_with("http://") || id_str.starts_with("https://") {
+                            // Check if this is a reference to the root resource
+                            if id_str == root_subject {
+                                // Skip root resource references
                                 continue;
                             } else {
-                                // If @id is not a full URL and not in mapping, skip it
+                                // Keep other full URLs as-is for @id properties
+                                new_obj.insert(
+                                    k.clone(),
+                                    serde_json::Value::String(id_str.to_string()),
+                                );
                                 continue;
                             }
+                        } else if let Some(mapped) = mapping.get(id_str) {
+                            // If it's in the mapping, use the mapped value
+                            new_obj.insert(k.clone(), serde_json::Value::String(mapped.clone()));
+                            continue;
+                        } else {
+                            // If @id is not a full URL and not in mapping, skip it
+                            continue;
                         }
                     }
                     new_obj.insert(k.clone(), map_value(v, mapping, root_subject));
@@ -987,28 +982,26 @@ async fn export_to_local(args: &[String]) -> Result<(), Box<dyn std::error::Erro
                     .filter_map(|v| {
                         if let serde_json::Value::Object(obj) = v {
                             // Check if object has an @id that's not a valid URL
-                            if let Some(id_val) = obj.get("@id") {
-                                if let Some(id_str) = id_val.as_str() {
-                                    if !id_str.starts_with("http://")
-                                        && !id_str.starts_with("https://")
-                                    {
-                                        // Skip this object entirely
-                                        return None;
-                                    }
-                                    // Also filter out any objects with @id properties that are inside collection members
-                                    // These are metadata objects or existing resources that shouldn't be imported
-                                    if obj.contains_key(
-                                        "https://atomicdata.dev/properties/collection/currentPage",
-                                    ) || obj.contains_key(
-                                        "https://atomicdata.dev/properties/collection/pageSize",
-                                    ) || obj
-                                        .contains_key("https://atomicdata.dev/properties/createdAt")
-                                        || obj.contains_key(
-                                            "https://atomicdata.dev/properties/publicKey",
-                                        )
-                                    {
-                                        return None;
-                                    }
+                            if let Some(id_val) = obj.get("@id")
+                                && let Some(id_str) = id_val.as_str()
+                            {
+                                if !id_str.starts_with("http://") && !id_str.starts_with("https://")
+                                {
+                                    // Skip this object entirely
+                                    return None;
+                                }
+                                // Also filter out any objects with @id properties that are inside collection members
+                                // These are metadata objects or existing resources that shouldn't be imported
+                                if obj.contains_key(
+                                    "https://atomicdata.dev/properties/collection/currentPage",
+                                ) || obj.contains_key(
+                                    "https://atomicdata.dev/properties/collection/pageSize",
+                                ) || obj
+                                    .contains_key("https://atomicdata.dev/properties/createdAt")
+                                    || obj
+                                        .contains_key("https://atomicdata.dev/properties/publicKey")
+                                {
+                                    return None;
                                 }
                             }
                         }

@@ -130,40 +130,40 @@ pub fn expand_path(path: &str) -> PathBuf {
     // that captures everything until the last }
     loop {
         // Find ${VAR:-...} pattern manually to handle nested braces
-        if let Some(start) = result.find("${") {
-            if let Some(colon_pos) = result[start..].find(":-") {
-                let colon_pos = start + colon_pos;
-                // Find the variable name
-                let var_name = &result[start + 2..colon_pos];
-                // Find the matching closing brace by counting braces
-                let after_colon = colon_pos + 2;
-                let mut depth = 1;
-                let mut end_pos = after_colon;
-                for (i, c) in result[after_colon..].char_indices() {
-                    match c {
-                        '{' => depth += 1,
-                        '}' => {
-                            depth -= 1;
-                            if depth == 0 {
-                                end_pos = after_colon + i;
-                                break;
-                            }
+        if let Some(start) = result.find("${")
+            && let Some(colon_pos) = result[start..].find(":-")
+        {
+            let colon_pos = start + colon_pos;
+            // Find the variable name
+            let var_name = &result[start + 2..colon_pos];
+            // Find the matching closing brace by counting braces
+            let after_colon = colon_pos + 2;
+            let mut depth = 1;
+            let mut end_pos = after_colon;
+            for (i, c) in result[after_colon..].char_indices() {
+                match c {
+                    '{' => depth += 1,
+                    '}' => {
+                        depth -= 1;
+                        if depth == 0 {
+                            end_pos = after_colon + i;
+                            break;
                         }
-                        _ => {}
                     }
+                    _ => {}
                 }
-                if depth == 0 {
-                    let default_value = &result[after_colon..end_pos];
-                    let replacement =
-                        std::env::var(var_name).unwrap_or_else(|_| default_value.to_string());
-                    result = format!(
-                        "{}{}{}",
-                        &result[..start],
-                        replacement,
-                        &result[end_pos + 1..]
-                    );
-                    continue; // Process again in case there are more patterns
-                }
+            }
+            if depth == 0 {
+                let default_value = &result[after_colon..end_pos];
+                let replacement =
+                    std::env::var(var_name).unwrap_or_else(|_| default_value.to_string());
+                result = format!(
+                    "{}{}{}",
+                    &result[..start],
+                    replacement,
+                    &result[end_pos + 1..]
+                );
+                continue; // Process again in case there are more patterns
             }
         }
         break;
@@ -200,10 +200,10 @@ pub fn expand_path(path: &str) -> PathBuf {
         .to_string();
 
     // Handle ~ at the beginning of the path
-    if result.starts_with('~') {
-        if let Some(home) = get_home_dir() {
-            result = result.replacen('~', &home.to_string_lossy(), 1);
-        }
+    if result.starts_with('~')
+        && let Some(home) = get_home_dir()
+    {
+        result = result.replacen('~', &home.to_string_lossy(), 1);
     }
 
     PathBuf::from(result)
@@ -874,10 +874,10 @@ impl ConfigBuilder {
     pub fn with_project(self) -> Self {
         if let Ok(Some(path)) = crate::project::discover(None) {
             let config_path = path.join("config.json");
-            if config_path.is_file() {
-                if let Ok(project_config) = crate::project::ProjectConfig::from_file(&config_path) {
-                    return self.merge_with(&project_config);
-                }
+            if config_path.is_file()
+                && let Ok(project_config) = crate::project::ProjectConfig::from_file(&config_path)
+            {
+                return self.merge_with(&project_config);
             }
         }
         self
@@ -1083,10 +1083,10 @@ fn extract_triggers_from_kg(
         let normalized_value = terraphim_types::NormalizedTermValue::new(concept_name.clone());
         if let Some(term) = thesaurus.get(&normalized_value) {
             let node_id = term.id;
-            if let Some(trigger_text) = directives.trigger {
-                if !trigger_text.trim().is_empty() {
-                    triggers.insert(node_id, trigger_text.trim().to_string());
-                }
+            if let Some(trigger_text) = directives.trigger
+                && !trigger_text.trim().is_empty()
+            {
+                triggers.insert(node_id, trigger_text.trim().to_string());
             }
             if directives.pinned {
                 pinned.push(node_id);
@@ -1123,111 +1123,24 @@ impl ConfigState {
         for (name, role) in &config.roles {
             let role_name = name.clone();
             log::info!("Creating role {}", role_name);
-            if role.relevance_function == RelevanceFunction::TerraphimGraph {
-                if let Some(kg) = &role.kg {
-                    if let Some(automata_path) = &kg.automata_path {
-                        log::info!(
-                            "Role {} is configured correctly with automata_path",
-                            role_name
-                        );
-                        log::info!("Loading Role `{}` - URL: {:?}", role_name, automata_path);
+            if role.relevance_function == RelevanceFunction::TerraphimGraph
+                && let Some(kg) = &role.kg
+            {
+                if let Some(automata_path) = &kg.automata_path {
+                    log::info!(
+                        "Role {} is configured correctly with automata_path",
+                        role_name
+                    );
+                    log::info!("Loading Role `{}` - URL: {:?}", role_name, automata_path);
 
-                        // Try to load from automata path first
-                        match load_thesaurus(automata_path).await {
-                            Ok(thesaurus) => {
-                                log::info!("Successfully loaded thesaurus from automata path");
-                                let mut rolegraph =
-                                    RoleGraph::new(role_name.clone(), thesaurus.clone()).await?;
-                                // Load trigger/pinned directives from local KG if available
-                                if let Some(kg_local) = &kg.knowledge_graph_local {
-                                    let (triggers, pinned) =
-                                        extract_triggers_from_kg(&kg_local.path, &thesaurus);
-                                    if !triggers.is_empty() || !pinned.is_empty() {
-                                        log::info!(
-                                            "Loading {} triggers and {} pinned entries for role {} from local KG",
-                                            triggers.len(),
-                                            pinned.len(),
-                                            role_name
-                                        );
-                                        rolegraph.load_trigger_index(triggers, pinned, 0.3);
-                                    }
-                                }
-                                roles.insert(role_name.clone(), RoleGraphSync::from(rolegraph));
-                            }
-                            Err(e) => {
-                                log::warn!("Failed to load thesaurus from automata path: {:?}", e);
-                                if let Some(kg_local) = &kg.knowledge_graph_local {
-                                    log::info!(
-                                        "Falling back to local KG for role {} at {:?}",
-                                        role_name,
-                                        kg_local.path
-                                    );
-                                    let logseq_builder = Logseq::default();
-                                    match logseq_builder
-                                        .build(
-                                            role_name.as_lowercase().to_string(),
-                                            kg_local.path.clone(),
-                                        )
-                                        .await
-                                    {
-                                        Ok(thesaurus) => {
-                                            log::info!(
-                                                "Successfully built thesaurus from local KG fallback for role {}",
-                                                role_name
-                                            );
-                                            let mut rolegraph = RoleGraph::new(
-                                                role_name.clone(),
-                                                thesaurus.clone(),
-                                            )
-                                            .await?;
-                                            let (triggers, pinned) = extract_triggers_from_kg(
-                                                &kg_local.path,
-                                                &thesaurus,
-                                            );
-                                            if !triggers.is_empty() || !pinned.is_empty() {
-                                                log::info!(
-                                                    "Loading {} triggers and {} pinned entries for role {} from local KG fallback",
-                                                    triggers.len(),
-                                                    pinned.len(),
-                                                    role_name
-                                                );
-                                                rolegraph.load_trigger_index(triggers, pinned, 0.3);
-                                            }
-                                            roles.insert(
-                                                role_name.clone(),
-                                                RoleGraphSync::from(rolegraph),
-                                            );
-                                        }
-                                        Err(e2) => {
-                                            log::error!(
-                                                "Failed to build thesaurus from local KG fallback for role {}: {:?}",
-                                                role_name,
-                                                e2
-                                            );
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    } else if let Some(kg_local) = &kg.knowledge_graph_local {
-                        // If automata_path is None, but a local KG is defined, build it now
-                        log::info!(
-                            "Role {} has no automata_path, building thesaurus from local KG files at {:?}",
-                            role_name,
-                            kg_local.path
-                        );
-                        let logseq_builder = Logseq::default();
-                        match logseq_builder
-                            .build(role_name.as_lowercase().to_string(), kg_local.path.clone())
-                            .await
-                        {
-                            Ok(thesaurus) => {
-                                log::info!(
-                                    "Successfully built thesaurus from local KG for role {}",
-                                    role_name
-                                );
-                                let mut rolegraph =
-                                    RoleGraph::new(role_name.clone(), thesaurus.clone()).await?;
+                    // Try to load from automata path first
+                    match load_thesaurus(automata_path).await {
+                        Ok(thesaurus) => {
+                            log::info!("Successfully loaded thesaurus from automata path");
+                            let mut rolegraph =
+                                RoleGraph::new(role_name.clone(), thesaurus.clone()).await?;
+                            // Load trigger/pinned directives from local KG if available
+                            if let Some(kg_local) = &kg.knowledge_graph_local {
                                 let (triggers, pinned) =
                                     extract_triggers_from_kg(&kg_local.path, &thesaurus);
                                 if !triggers.is_empty() || !pinned.is_empty() {
@@ -1239,22 +1152,105 @@ impl ConfigState {
                                     );
                                     rolegraph.load_trigger_index(triggers, pinned, 0.3);
                                 }
-                                roles.insert(role_name.clone(), RoleGraphSync::from(rolegraph));
                             }
-                            Err(e) => {
-                                log::error!(
-                                    "Failed to build thesaurus from local KG for role {}: {:?}",
+                            roles.insert(role_name.clone(), RoleGraphSync::from(rolegraph));
+                        }
+                        Err(e) => {
+                            log::warn!("Failed to load thesaurus from automata path: {:?}", e);
+                            if let Some(kg_local) = &kg.knowledge_graph_local {
+                                log::info!(
+                                    "Falling back to local KG for role {} at {:?}",
                                     role_name,
-                                    e
+                                    kg_local.path
                                 );
+                                let logseq_builder = Logseq::default();
+                                match logseq_builder
+                                    .build(
+                                        role_name.as_lowercase().to_string(),
+                                        kg_local.path.clone(),
+                                    )
+                                    .await
+                                {
+                                    Ok(thesaurus) => {
+                                        log::info!(
+                                            "Successfully built thesaurus from local KG fallback for role {}",
+                                            role_name
+                                        );
+                                        let mut rolegraph =
+                                            RoleGraph::new(role_name.clone(), thesaurus.clone())
+                                                .await?;
+                                        let (triggers, pinned) =
+                                            extract_triggers_from_kg(&kg_local.path, &thesaurus);
+                                        if !triggers.is_empty() || !pinned.is_empty() {
+                                            log::info!(
+                                                "Loading {} triggers and {} pinned entries for role {} from local KG fallback",
+                                                triggers.len(),
+                                                pinned.len(),
+                                                role_name
+                                            );
+                                            rolegraph.load_trigger_index(triggers, pinned, 0.3);
+                                        }
+                                        roles.insert(
+                                            role_name.clone(),
+                                            RoleGraphSync::from(rolegraph),
+                                        );
+                                    }
+                                    Err(e2) => {
+                                        log::error!(
+                                            "Failed to build thesaurus from local KG fallback for role {}: {:?}",
+                                            role_name,
+                                            e2
+                                        );
+                                    }
+                                }
                             }
                         }
-                    } else {
-                        log::warn!(
-                            "Role {} is configured for TerraphimGraph but has neither automata_path nor knowledge_graph_local defined.",
-                            role_name
-                        );
                     }
+                } else if let Some(kg_local) = &kg.knowledge_graph_local {
+                    // If automata_path is None, but a local KG is defined, build it now
+                    log::info!(
+                        "Role {} has no automata_path, building thesaurus from local KG files at {:?}",
+                        role_name,
+                        kg_local.path
+                    );
+                    let logseq_builder = Logseq::default();
+                    match logseq_builder
+                        .build(role_name.as_lowercase().to_string(), kg_local.path.clone())
+                        .await
+                    {
+                        Ok(thesaurus) => {
+                            log::info!(
+                                "Successfully built thesaurus from local KG for role {}",
+                                role_name
+                            );
+                            let mut rolegraph =
+                                RoleGraph::new(role_name.clone(), thesaurus.clone()).await?;
+                            let (triggers, pinned) =
+                                extract_triggers_from_kg(&kg_local.path, &thesaurus);
+                            if !triggers.is_empty() || !pinned.is_empty() {
+                                log::info!(
+                                    "Loading {} triggers and {} pinned entries for role {} from local KG",
+                                    triggers.len(),
+                                    pinned.len(),
+                                    role_name
+                                );
+                                rolegraph.load_trigger_index(triggers, pinned, 0.3);
+                            }
+                            roles.insert(role_name.clone(), RoleGraphSync::from(rolegraph));
+                        }
+                        Err(e) => {
+                            log::error!(
+                                "Failed to build thesaurus from local KG for role {}: {:?}",
+                                role_name,
+                                e
+                            );
+                        }
+                    }
+                } else {
+                    log::warn!(
+                        "Role {} is configured for TerraphimGraph but has neither automata_path nor knowledge_graph_local defined.",
+                        role_name
+                    );
                 }
             }
         }
@@ -1711,6 +1707,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "loads terraphim_server/default config which lives in the server-monorepo, not this repo (#1910)"]
     async fn test_load_from_json_file_with_fixture() {
         // Build path relative to workspace root
         let workspace_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))

@@ -626,18 +626,18 @@ impl Store {
                         collect_links_local(queue, val, server_prefix);
                     }
                 } else if let Some(obj) = value.as_object() {
-                    if let Some(id_val) = obj.get("@id").and_then(|v| v.as_str()) {
-                        if id_val.starts_with(server_prefix) {
-                            queue.push_back(id_val.to_string());
-                        }
+                    if let Some(id_val) = obj.get("@id").and_then(|v| v.as_str())
+                        && id_val.starts_with(server_prefix)
+                    {
+                        queue.push_back(id_val.to_string());
                     }
                     for (_k, v) in obj {
                         collect_links_local(queue, v, server_prefix);
                     }
-                } else if let Some(str_val) = value.as_str() {
-                    if str_val.starts_with(server_prefix) {
-                        queue.push_back(str_val.to_string());
-                    }
+                } else if let Some(str_val) = value.as_str()
+                    && str_val.starts_with(server_prefix)
+                {
+                    queue.push_back(str_val.to_string());
                 }
             }
 

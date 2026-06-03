@@ -263,7 +263,7 @@ impl Agent {
         // Decode the private key with padding fix
         let private_key_bytes = {
             let mut padded_key = private_key_base64.to_string();
-            while padded_key.len() % 4 != 0 {
+            while !padded_key.len().is_multiple_of(4) {
                 padded_key.push('=');
             }
             STANDARD.decode(&padded_key)?
@@ -312,7 +312,7 @@ impl Agent {
         // Decode and validate the public key with padding fix
         let public_key_bytes = {
             let mut padded_key = public_key_base64.to_string();
-            while padded_key.len() % 4 != 0 {
+            while !padded_key.len().is_multiple_of(4) {
                 padded_key.push('=');
             }
             STANDARD.decode(&padded_key)?

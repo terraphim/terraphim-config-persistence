@@ -290,12 +290,11 @@ impl Commit {
     /// A Result indicating whether the commit is valid or an error
     pub fn validate(&self) -> Result<()> {
         // Check for circular parent references
-        if let Some(ref set) = self.set {
-            if let Some(parent) = set.get("https://atomicdata.dev/properties/parent") {
-                if parent.as_str() == Some(&self.subject) {
-                    return Err(AtomicError::Parse("Circular parent reference".to_string()));
-                }
-            }
+        if let Some(ref set) = self.set
+            && let Some(parent) = set.get("https://atomicdata.dev/properties/parent")
+            && parent.as_str() == Some(&self.subject)
+        {
+            return Err(AtomicError::Parse("Circular parent reference".to_string()));
         }
 
         // Check timestamp is not in the future (with some tolerance)

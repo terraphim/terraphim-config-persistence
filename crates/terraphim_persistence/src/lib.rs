@@ -42,10 +42,10 @@ fn expand_tilde(path: &str) -> String {
         if let Ok(home) = std::env::var("HOME") {
             return format!("{}{}", home, &path[1..]);
         }
-    } else if path == "~" {
-        if let Ok(home) = std::env::var("HOME") {
-            return home;
-        }
+    } else if path == "~"
+        && let Ok(home) = std::env::var("HOME")
+    {
+        return home;
     }
     path.to_string()
 }
@@ -152,41 +152,41 @@ async fn init_device_storage_with_settings(settings: DeviceSettings) -> Result<D
         let profile_type = profile.get("type").unwrap_or(&unknown);
         match profile_type.as_str() {
             "sqlite" => {
-                if let Some(datadir) = profile.get("datadir") {
-                    if !datadir.is_empty() {
-                        let expanded = expand_tilde(datadir);
-                        log::info!("Pre-creating SQLite directory: {}", expanded);
-                        if let Err(e) = std::fs::create_dir_all(&expanded) {
-                            log::warn!("Failed to create SQLite directory '{}': {}", expanded, e);
-                        } else {
-                            log::info!("Created SQLite directory: {}", expanded);
-                        }
+                if let Some(datadir) = profile.get("datadir")
+                    && !datadir.is_empty()
+                {
+                    let expanded = expand_tilde(datadir);
+                    log::info!("Pre-creating SQLite directory: {}", expanded);
+                    if let Err(e) = std::fs::create_dir_all(&expanded) {
+                        log::warn!("Failed to create SQLite directory '{}': {}", expanded, e);
+                    } else {
+                        log::info!("Created SQLite directory: {}", expanded);
                     }
                 }
             }
             "redb" => {
-                if let Some(datadir) = profile.get("datadir") {
-                    if !datadir.is_empty() {
-                        let expanded = expand_tilde(datadir);
-                        log::info!("Pre-creating ReDB directory: {}", expanded);
-                        if let Err(e) = std::fs::create_dir_all(&expanded) {
-                            log::warn!("Failed to create ReDB directory '{}': {}", expanded, e);
-                        } else {
-                            log::info!("Created ReDB directory: {}", expanded);
-                        }
+                if let Some(datadir) = profile.get("datadir")
+                    && !datadir.is_empty()
+                {
+                    let expanded = expand_tilde(datadir);
+                    log::info!("Pre-creating ReDB directory: {}", expanded);
+                    if let Err(e) = std::fs::create_dir_all(&expanded) {
+                        log::warn!("Failed to create ReDB directory '{}': {}", expanded, e);
+                    } else {
+                        log::info!("Created ReDB directory: {}", expanded);
                     }
                 }
             }
             "dashmap" => {
-                if let Some(root) = profile.get("root") {
-                    if !root.is_empty() {
-                        let expanded = expand_tilde(root);
-                        log::info!("Pre-creating DashMap directory: {}", expanded);
-                        if let Err(e) = std::fs::create_dir_all(&expanded) {
-                            log::warn!("Failed to create DashMap directory '{}': {}", expanded, e);
-                        } else {
-                            log::info!("Created DashMap directory: {}", expanded);
-                        }
+                if let Some(root) = profile.get("root")
+                    && !root.is_empty()
+                {
+                    let expanded = expand_tilde(root);
+                    log::info!("Pre-creating DashMap directory: {}", expanded);
+                    if let Err(e) = std::fs::create_dir_all(&expanded) {
+                        log::warn!("Failed to create DashMap directory '{}': {}", expanded, e);
+                    } else {
+                        log::info!("Created DashMap directory: {}", expanded);
                     }
                 }
             }
