@@ -2,5 +2,3 @@
 global-credential-providers = ["cargo:token"]
 
 # terraphim-core is consumed from the Terraphim org registry (public-read).
-[registries.terraphim]
-index = "sparse+https://git.terraphim.cloud/api/packages/terraphim/cargo/"
