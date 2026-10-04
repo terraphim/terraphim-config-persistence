@@ -1,6 +1,6 @@
 [package]
 name = "terraphim_config"
-version = "1.20.2"
+version = "1.20.5"
 edition.workspace = true
 authors = ["Terraphim Contributors"]
 description = "Terraphim configuration"
@@ -20,7 +20,14 @@ name = "terraphim-config"
 [dependencies]
 terraphim_rolegraph = { version = "1.0.0" }
 terraphim_types = { version = "1.0.0" }
-terraphim_automata = { version = "1.19.2", features = ["remote-loading"] }
+# `fs-traversal` is required because `lib.rs` unconditionally imports
+# `parse_markdown_directives_dir`, which `terraphim_automata >= 1.21.0` gates
+# behind this feature (Refs upstream terraphim-core#31). Without enabling it,
+# `cargo install terraphim-skills` fails with E0432:
+#   "no `parse_markdown_directives_dir` in the root ... the item is gated
+#    behind the `fs-traversal` feature"
+# See also: cto-executive-system plans/terraphim-skills-better-auth-design.md
+terraphim_automata = { version = "1.19.2", features = ["remote-loading", "fs-traversal"] }
 terraphim_persistence = { path = "../terraphim_persistence", version = "1.0.0" }
 terraphim_settings = { path = "../terraphim_settings", version = "1.0.0" }
 
